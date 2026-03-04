@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sähkö">
+<meta name="theme-color" content="#0f172a">
+<title>Sähköajastin</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230f172a' width='100' height='100' rx='20'/><text x='50' y='68' text-anchor='middle' font-size='60'>⚡</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'JetBrains Mono', 'SF Mono', monospace;
+    background: #0f172a; color: #e2e8f0;
+    min-height: 100vh; min-height: 100dvh;
+    padding: 16px; padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    -webkit-text-size-adjust: 100%;
+  }
+  #app { max-width: 480px; margin: 0 auto; }
+
+.header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid #1e293b; }
+.header-left { display:flex; align-items:center; gap:10px; }
+.header-left .bolt { font-size:26px; }
+.header-left .title { font-size:18px; font-weight:700; color:#f8fafc; letter-spacing:-0.5px; }
+.header-right { text-align:right; }
+.clock { font-size:20px; font-weight:700; color:#f8fafc; font-variant-numeric:tabular-nums; }
+.date { font-size:11px; color:#64748b; }
+
+.card { background:#1e293b; border-radius:10px; padding:12px 16px; margin-bottom:10px; }
+.label { font-size:10px; font-weight:600; letter-spacing:1.5px; color:#64748b; margin-bottom:10px; }
+.muted { font-size:12px; color:#64748b; }
+
+.hero { padding:20px 24px; border-left:6px solid #475569; }
+.hero-delay { display:flex; align-items:baseline; gap:10px; margin-bottom:12px; }
+.hero-prefix { font-size:16px; color:#94a3b8; }
+.hero-number { font-size:48px; font-weight:800; line-height:1; letter-spacing:-2px; }
+.hero-now { font-size:36px; font-weight:800; line-height:1; }
+.hero-details { display:flex; gap:20px; font-size:12px; flex-wrap:wrap; }
+.hero-details b { color:#cbd5e1; }
+
+.dur-row { display:flex; justify-content:space-between; align-items:center; }
+.dur-label { font-size:12px; color:#94a3b8; }
+.dur-btns { display:flex; gap:6px; }
+.dur-btn {
+padding:6px 16px; border-radius:6px; border:1px solid #334155;
+background:transparent; color:#94a3b8; font-size:12px; font-weight:600;
+cursor:pointer; font-family:inherit; transition: all 0.15s;
+}
+.dur-btn.active { background:#334155; color:#f8fafc; border-color:#475569; }
+.dur-btn:active { transform: scale(0.95); }
+
+.price-row { display:flex; justify-content:space-between; align-items:center; }
+.price-now { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
+.price-unit { font-size:11px; font-weight:400; color:#64748b; }
+
+.chart-bars { display:flex; align-items:flex-end; height:110px; gap:1px; }
+.bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; position:relative; }
+.bar { width:100%; border-radius:2px 2px 0 0; transition:height 0.3s; min-height:2px; }
+.bar-lbl { font-size:8px; color:#475569; position:absolute; bottom:-14px; }
+
+.legend { display:flex; gap:14px; margin-top:20px; padding-left:4px; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:10px; color:#64748b; }
+.legend-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+
+details { margin-bottom:12px; }
+summary { font-size:12px; color:#64748b; cursor:pointer; padding:8px 0; font-family:inherit; }
+.table-wrap { background:#1e293b; border-radius:8px; overflow:hidden; margin-top:6px; }
+.table-row { display:flex; justify-content:space-between; padding:5px 12px; border-bottom:1px solid #0f172a; font-size:11px; }
+.table-time { color:#94a3b8; font-variant-numeric:tabular-nums; }
+.table-price { font-weight:600; font-variant-numeric:tabular-nums; }
+
+.footer { text-align:center; font-size:9px; color:#334155; padding:8px 0; }
+
+.center { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:14px; }
+.spin { width:28px; height:28px; border:3px solid #1e293b; border-top:3px solid #22c55e; border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.refresh-btn {
+position:fixed; bottom: max(20px, env(safe-area-inset-bottom)); right:20px;
+width:48px; height:48px; border-radius:50%; border:none;
+background:#1e293b; color:#64748b; font-size:20px;
+cursor:pointer; box-shadow:0 2px 12px rgba(0,0,0,0.4);
+display:flex; align-items:center; justify-content:center;
+transition: all 0.2s;
+}
+.refresh-btn:active { transform:scale(0.9); background:#334155; }
+</style>
+
+</head>
+<body>
+<div id="app">
+  <div class="center">
+    <div class="spin"></div>
+    <p class="muted">Haetaan hintoja...</p>
+  </div>
+</div>
+<button class="refresh-btn" onclick="location.reload()" title="Päivitä">↻</button>
+
+<script>
+const APIS = [
+  {
+    name: "spot-hinta.fi",
+    url: "https://api.spot-hinta.fi/TodayAndDayForward",
+    parse: d => d.map(p => ({
+      start: new Date(p.DateTime),
+      end: new Date(new Date(p.DateTime).getTime() + 3600000),
+      pv: +(p.PriceWithTax).toFixed(2)
+    }))
+  },
+  {
+    name: "porssisahko.net",
+    url: "https://api.porssisahko.net/v1/latest-prices.json",
+    parse: d => d.prices.map(p => ({
+      start: new Date(p.startDate),
+      end: new Date(p.endDate),
+      pv: +(p.price * 1.255).toFixed(2)
+    }))
+  }
+];
+
+let prices = [], source = "", dur = 2;
+
+const $ = s => document.querySelector(s);
+const fH = d => `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
+const fD = d => { const ds=["su","ma","ti","ke","to","pe","la"]; return `${ds[d.getDay()]} ${d.getDate()}.${d.getMonth()+1}.`; };
+const pc = v => v<2?"#22c55e":v<5?"#84cc16":v<10?"#eab308":v<20?"#f97316":"#ef4444";
+const dc = d => d===0?"#22c55e":d<=2?"#84cc16":d<=5?"#eab308":"#f97316";
+
+async function fetchPrices() {
+  for (const api of APIS) {
+    try {
+      const r = await fetch(api.url, { headers: { Accept: "application/json" } });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const parsed = api.parse(d).sort((a,b) => a.start - b.start);
+      if (parsed.length > 0) {
+        prices = parsed;
+        source = api.name;
+        return true;
+      }
+    } catch(e) { continue; }
+  }
+  return false;
+}
+
+function render() {
+  const now = new Date();
+  const upcoming = prices.filter(p => p.end > now && p.start < new Date(now.getTime() + 24*3600000));
+
+  if (upcoming.length === 0) {
+    $("#app").innerHTML = `<div class="center"><p style="font-size:48px">⚡</p><p class="muted">Ei hintatietoja saatavilla</p></div>`;
+    return;
+  }
+
+  // Find cheapest window
+  let bi=0, ba=Infinity;
+  for (let i=0; i<=upcoming.length-dur; i++) {
+    const a = upcoming.slice(i,i+dur).reduce((s,p)=>s+p.pv,0)/dur;
+    if (a<ba) { ba=a; bi=i; }
+  }
+  const ch = { idx:bi, start:upcoming[bi].start, end:upcoming[bi+dur-1].end, avg:ba };
+  const delay = ch.start <= now ? 0 : Math.ceil((ch.start - now)/3600000);
+  const cur = upcoming.find(p => p.start <= now && p.end > now);
+  const mx = Math.max(...upcoming.map(p=>p.pv), 1);
+
+  let html = `
+    <div class="header">
+      <div class="header-left"><span class="bolt">⚡</span><span class="title">Sähköajastin</span></div>
+      <div class="header-right"><div class="clock">${fH(now)}</div><div class="date">${fD(now)}</div></div>
+    </div>
+
+    <div class="card hero" style="border-left-color:${dc(delay)}">
+      <div class="label">ASTIANPESUKONE</div>
+      <div class="hero-delay">
+        ${delay === 0
+          ? `<span class="hero-now" style="color:${dc(delay)}">Käynnistä heti</span>`
+          : `<span class="hero-prefix">Viive</span><span class="hero-number" style="color:${dc(delay)}">${delay}h</span>`
+        }
+      </div>
+      <div class="hero-details">
+        <span class="muted">Halvin: <b>${fH(ch.start)}–${fH(ch.end)}</b></span>
+        <span class="muted">Keskihinta: <b style="color:${pc(ch.avg)}">${ch.avg.toFixed(2)} snt</b></span>
+      </div>
+    </div>
+
+    <div class="card dur-row">
+      <span class="dur-label">Kesto:</span>
+      <div class="dur-btns">
+        ${[1,2,3].map(h=>`<button class="dur-btn ${dur===h?'active':''}" onclick="setDur(${h})">${h}h</button>`).join("")}
+      </div>
+    </div>
+
+    ${cur ? `
+    <div class="card price-row">
+      <span class="dur-label">Hinta nyt</span>
+      <span class="price-now" style="color:${pc(cur.pv)}">${cur.pv.toFixed(2)}<span class="price-unit"> snt/kWh</span></span>
+    </div>` : ""}
+
+    <div class="card" style="padding:16px 10px">
+      <div class="label" style="padding-left:4px;margin-bottom:10px">SEURAAVAT 24H</div>
+      <div class="chart-bars">
+        ${upcoming.map((p,i) => {
+          const ht = Math.max((p.pv/mx)*100, 2);
+          const isW = i>=ch.idx && i<ch.idx+dur;
+          const isC = cur && p.start.getTime()===cur.start.getTime();
+          const bg = isW?"#22c55e":isC?"#38bdf8":pc(p.pv);
+          const op = isW||isC?1:0.45;
+          const sh = isW?"0 0 8px rgba(34,197,94,0.4)":isC?"0 0 8px rgba(56,189,248,0.3)":"none";
+          const lbl = (i===0||p.start.getHours()%4===0)?`<span class="bar-lbl">${p.start.getHours().toString().padStart(2,"0")}</span>`:"";
+          return `<div class="bar-wrap" title="${fH(p.start)}: ${p.pv.toFixed(2)} snt"><div class="bar" style="height:${ht}%;background:${bg};opacity:${op};box-shadow:${sh}"></div>${lbl}</div>`;
+        }).join("")}
+      </div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Halvin</span>
+        <span class="legend-item"><span class="legend-dot" style="background:#38bdf8"></span>Nyt</span>
+      </div>
+    </div>
+
+    <details>
+      <summary>Kaikki tuntihinnat</summary>
+      <div class="table-wrap">
+        ${upcoming.map((p,i) => {
+          const isW = i>=ch.idx && i<ch.idx+dur;
+          const isC = cur && p.start.getTime()===cur.start.getTime();
+          const bg = isW?"rgba(34,197,94,0.1)":isC?"rgba(56,189,248,0.08)":"transparent";
+          return `<div class="table-row" style="background:${bg}"><span class="table-time">${fH(p.start)}–${fH(p.end)}${isC?" ◀":""}</span><span class="table-price" style="color:${pc(p.pv)}">${p.pv.toFixed(2)} snt</span></div>`;
+        }).join("")}
+      </div>
+    </details>
+
+    <div class="footer">ALV 25,5 % · ${source}</div>
+  `;
+
+  $("#app").innerHTML = html;
+}
+
+function setDur(d) { dur = d; render(); }
+
+(async () => {
+  const ok = await fetchPrices();
+  if (!ok) {
+    $("#app").innerHTML = `<div class="center"><p style="font-size:48px">⚡</p><p style="color:#f87171;font-size:14px">Hintojen haku epäonnistui</p><p class="muted" style="font-size:11px;max-width:300px;text-align:center;line-height:1.7">Tarkista nettiyhteys ja yritä uudelleen.</p></div>`;
+    return;
+  }
+  render();
+  // Update every minute
+  setInterval(render, 60000);
+})();
+</script>
+
+</body>
+</html>
